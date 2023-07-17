@@ -2,6 +2,8 @@ import sys
 # sys.path.insert(0,'/run/determined/workdir')
 import torch
 import torchvision
+
+import os
 try:
     from torchvision.models.detection import FCOS, fcos_resnet50_fpn, FasterRCNN
 except ImportError as e:
@@ -136,9 +138,18 @@ def make_custom_object_detection_model_fcos(num_classes):
     return model
 
 def build_frcnn_model(num_classes):
+    print("Loading pretrained model...")
     # load an detection model pre-trained on COCO
     model = torchvision.models.detection.fasterrcnn_resnet50_fpn(pretrained=True)
-
+    try:
+        in_features = model.roi_heads.box_predictor.cls_score.in_features
+        # replace the pre-trained head with a new one
+        model.roi_heads.box_predictor = FastRCNNPredictor(in_features, 61)
+        path = os.path.join('/nvmefs1/andrew.mendez/frcnn_xview.pth')
+        model=load_model_ddp(model,torch.load(path,map_location=torch.device('cpu')))
+    except Exception as e:
+        print(e)
+        pass
     # get the number of input features for the classifier
     in_features = model.roi_heads.box_predictor.cls_score.in_features
     # replace the pre-trained head with a new one
@@ -155,11 +166,89 @@ def build_frcnn_model(num_classes):
     model.rpn_bg_iou_thresh=0.3
     model.rpn_batch_size_per_image=256
     model.rpn_positive_fraction=0.5
-    model.rpn_score_thresh=0.0
+    model.rpn_score_thresh=0.05
     # Box parameters
-    model.box_score_thresh=0.05
+    model.box_score_thresh=0.0
     model.box_nms_thresh=0.5
-    model.box_detections_per_img=100
+    model.box_detections_per_img=300
+    model.box_fg_iou_thresh=0.5
+    model.box_bg_iou_thresh=0.5
+    model.box_batch_size_per_image=512
+    model.box_positive_fraction=0.25
+    return model
+def build_frcnn_model_finetune(num_classes):
+    print("Loading pretrained model...")
+    # load an detection model pre-trained on COCO
+    model = torchvision.models.detection.fasterrcnn_resnet50_fpn(pretrained=True)
+    try:
+        in_features = model.roi_heads.box_predictor.cls_score.in_features
+        # replace the pre-trained head with a new one
+        model.roi_heads.box_predictor = FastRCNNPredictor(in_features, 61)
+        path = os.path.join('/nvmefs1/andrew.mendez/frcnn_xview.pth')
+        model=load_model_ddp(model,torch.load(path,map_location=torch.device('cpu')))
+    except Exception as e:
+        print(e)
+        pass
+    # get the number of input features for the classifier
+    in_features = model.roi_heads.box_predictor.cls_score.in_features
+    # replace the pre-trained head with a new one
+    model.roi_heads.box_predictor = FastRCNNPredictor(in_features, num_classes)
+    model.min_size=800
+    model.max_size=1333
+    # RPN parameters
+    model.rpn_pre_nms_top_n_train=2000
+    model.rpn_pre_nms_top_n_test=1000
+    model.rpn_post_nms_top_n_train=2000
+    model.rpn_post_nms_top_n_test=1000
+    model.rpn_nms_thresh=0.7
+    model.rpn_fg_iou_thresh=0.7
+    model.rpn_bg_iou_thresh=0.3
+    model.rpn_batch_size_per_image=256
+    model.rpn_positive_fraction=0.5
+    model.rpn_score_thresh=0.05
+    # Box parameters
+    model.box_score_thresh=0.0
+    model.box_nms_thresh=0.5
+    model.box_detections_per_img=300
+    model.box_fg_iou_thresh=0.5
+    model.box_bg_iou_thresh=0.5
+    model.box_batch_size_per_image=512
+    model.box_positive_fraction=0.25
+    return model
+def build_frcnn_model_finetune(num_classes):
+    print("Loading pretrained model...")
+    # load an detection model pre-trained on COCO
+    model = torchvision.models.detection.fasterrcnn_resnet50_fpn(pretrained=True)
+    try:
+        in_features = model.roi_heads.box_predictor.cls_score.in_features
+        # replace the pre-trained head with a new one
+        model.roi_heads.box_predictor = FastRCNNPredictor(in_features, 61)
+        path = os.path.join('/nvmefs1/andrew.mendez/frcnn_xview.pth')
+        model=load_model_ddp(model,torch.load(path,map_location=torch.device('cpu')))
+    except Exception as e:
+        print(e)
+        pass
+    # get the number of input features for the classifier
+    in_features = model.roi_heads.box_predictor.cls_score.in_features
+    # replace the pre-trained head with a new one
+    model.roi_heads.box_predictor = FastRCNNPredictor(in_features, num_classes)
+    model.min_size=800
+    model.max_size=1333
+    # RPN parameters
+    model.rpn_pre_nms_top_n_train=2000
+    model.rpn_pre_nms_top_n_test=1000
+    model.rpn_post_nms_top_n_train=2000
+    model.rpn_post_nms_top_n_test=1000
+    model.rpn_nms_thresh=0.7
+    model.rpn_fg_iou_thresh=0.7
+    model.rpn_bg_iou_thresh=0.3
+    model.rpn_batch_size_per_image=256
+    model.rpn_positive_fraction=0.5
+    model.rpn_score_thresh=0.05
+    # Box parameters
+    model.box_score_thresh=0.0
+    model.box_nms_thresh=0.5
+    model.box_detections_per_img=300
     model.box_fg_iou_thresh=0.5
     model.box_bg_iou_thresh=0.5
     model.box_batch_size_per_image=512

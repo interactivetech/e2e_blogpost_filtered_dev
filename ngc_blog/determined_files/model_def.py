@@ -156,11 +156,11 @@ class ObjectDetectionTrial(PyTorchTrial):
         self.hparams = AttrDict(self.context.get_hparams())
         print(self.hparams) 
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
+        
         # define model
         print("self.hparams[model]: ",self.hparams['model'] )
         if self.hparams['model'] == 'fasterrcnn_resnet50_fpn':
-            model = build_frcnn_model(61)
+            model = build_frcnn_model(3)
         elif self.hparams['model'] == 'fcos_resnet50_fpn':
             model = make_custom_object_detection_model_fcos(61)
         elif self.hparams['model'] == 'mobileone_fpn':
@@ -181,6 +181,7 @@ class ObjectDetectionTrial(PyTorchTrial):
             model = resnet152_fpn_fasterrcnn(61)
         # create_convnext_small_fasterrcnn_model
         
+
             # model = get_resnet_fcos(91)
             # model = fcos_resnet50_fpn(pretrained=False,num_classes=61)
             
@@ -190,9 +191,19 @@ class ObjectDetectionTrial(PyTorchTrial):
         #     model = get_mobileone_s4_fpn_fcos(91)
         model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
         print("Converted all BatchNorm*D layers in the model to torch.nn.SyncBatchNorm layers.")
-        self.model = self.context.wrap_model(model)
 
+
+
+        if self.hparams['finetune_ckpt'] != None:
+            checkpoint = torch.load(self.hparams['finetune_ckpt'], map_location='cpu')
+            
+            # lr_scheduler.load_state_dict(checkpoint['lr_scheduler'])
+            # args.start_epoch = checkpoint['epoch'] + 1
+        
+        model.load_state_dict(checkpoint['model'])
         # wrap model
+
+        self.model = self.context.wrap_model(model)
 
         # wrap optimizer
         optimizer = torch.optim.SGD(
@@ -201,6 +212,7 @@ class ObjectDetectionTrial(PyTorchTrial):
             momentum=self.hparams.momentum,
             weight_decay=self.hparams.weight_decay
         )
+        optimizer.load_state_dict(checkpoint['optimizer'])
         self.optimizer = self.context.wrap_optimizer(optimizer)
         # self.model, self.optimizer = self.context.configure_apex_amp(self.model, self.optimizer, min_loss_scale=self.hparam("min_loss_scale"))
         # self.model, self.optimizer = self.context.configure_apex_amp(self.model, self.optimizer)
