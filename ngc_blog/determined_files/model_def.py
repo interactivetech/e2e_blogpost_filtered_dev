@@ -15,7 +15,7 @@ from pycocotools.coco import COCO
 from torch.optim.lr_scheduler import MultiStepLR
 # from utils.fcos import fcos_resnet50_fpn
 from utils.data import build_dataset,build_xview_dataset, unwrap_collate_fn, build_xview_dataset_filtered
-from utils.model import build_frcnn_model, finetune_ssd300_vgg16, finetune_ssdlite320_mobilenet_v3_large, create_resnet152_fasterrcnn_model, create_efficientnet_b4_fasterrcnn_model, create_convnext_large_fasterrcnn_model, create_convnext_small_fasterrcnn_model, resnet152_fpn_fasterrcnn
+from utils.model import build_frcnn_model,build_frcnn_model_finetune, finetune_ssd300_vgg16, finetune_ssdlite320_mobilenet_v3_large, create_resnet152_fasterrcnn_model, create_efficientnet_b4_fasterrcnn_model, create_convnext_large_fasterrcnn_model, create_convnext_small_fasterrcnn_model, resnet152_fpn_fasterrcnn
 
 # from utils.model import get_mv3_fcos_fpn, get_resnet_fcos, get_mobileone_s4_fpn_fcos
 # from model_mobileone import get_mobileone_s4_fpn_fcos
@@ -160,7 +160,7 @@ class ObjectDetectionTrial(PyTorchTrial):
         # define model
         print("self.hparams[model]: ",self.hparams['model'] )
         if self.hparams['model'] == 'fasterrcnn_resnet50_fpn':
-            model = build_frcnn_model(3)
+            model = build_frcnn_model_finetune(3)
         elif self.hparams['model'] == 'fcos_resnet50_fpn':
             model = make_custom_object_detection_model_fcos(61)
         elif self.hparams['model'] == 'mobileone_fpn':
@@ -196,11 +196,11 @@ class ObjectDetectionTrial(PyTorchTrial):
 
         if self.hparams['finetune_ckpt'] != None:
             checkpoint = torch.load(self.hparams['finetune_ckpt'], map_location='cpu')
-            
+            # pass
             # lr_scheduler.load_state_dict(checkpoint['lr_scheduler'])
             # args.start_epoch = checkpoint['epoch'] + 1
-        
-        model.load_state_dict(checkpoint['model'])
+        if self.hparams['finetune_ckpt'] != None:
+            model.load_state_dict(checkpoint['model'])
         # wrap model
 
         self.model = self.context.wrap_model(model)
@@ -212,7 +212,7 @@ class ObjectDetectionTrial(PyTorchTrial):
             momentum=self.hparams.momentum,
             weight_decay=self.hparams.weight_decay
         )
-        optimizer.load_state_dict(checkpoint['optimizer'])
+
         self.optimizer = self.context.wrap_optimizer(optimizer)
         # self.model, self.optimizer = self.context.configure_apex_amp(self.model, self.optimizer, min_loss_scale=self.hparam("min_loss_scale"))
         # self.model, self.optimizer = self.context.configure_apex_amp(self.model, self.optimizer)
@@ -274,12 +274,13 @@ class ObjectDetectionTrial(PyTorchTrial):
         return data_loader
 
     def build_validation_data_loader(self) -> DataLoader:
-        VAL_DATA_DIR='determined-ai-xview-coco-dataset/val_sliced_no_neg/val_images_300_02/'
-        dataset_test, _ = build_xview_dataset(image_set='val',args=AttrDict({
-                                                    'data_dir':VAL_DATA_DIR,
-                                                    'backend':'aws',
-                                                    'masks': None,
-                                                   }))
+        # VAL_DATA_DIR='determined-ai-xview-coco-dataset/val_sliced_no_neg/val_images_300_02/'
+        print("self.hparams.data_dir: ",self.hparams.data_dir)
+        dataset_test, _ = build_xview_dataset_filtered(image_set='val',args=AttrDict({
+                                                'data_dir':self.hparams.data_dir,
+                                                'backend':'local',
+                                                'masks': None,
+                                                }))
         self.dataset_test = dataset_test
         self.base_ds = get_coco_api_from_dataset(dataset_test)
 
