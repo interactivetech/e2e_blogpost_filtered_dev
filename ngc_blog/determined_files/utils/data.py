@@ -287,15 +287,19 @@ def build_xview_dataset_filtered(image_set, args):
     mode = "instances"
 
     # (Andrew 7.13.2023): This is a dataset that only detects Fixed Aircraft, and Cargo Plane
+    # PATHS = {
+    #     "train": ("train_images_rgb_no_neg/train_images_640_02", 'train_images_rgb_no_neg/train_640_02_filtered.json'),
+    #     "val": ("val_images_rgb_no_neg/val_images_640_02", 'val_images_rgb_no_neg/val_640_02_filtered.json'),
+    # }
+    # (Andrew 7.18.2023): This is a dataset that only detects Fixed Aircraft, and Cargo Plane
     PATHS = {
-        "train": ("train_images_rgb_no_neg/train_images_640_02", 'train_images_rgb_no_neg/train_640_02_filtered.json'),
-        "val": ("val_images_rgb_no_neg/val_images_640_02", 'val_images_rgb_no_neg/val_640_02_filtered.json'),
-        # "train": ("val2017", os.path.join("annotations", anno_file_template.format(mode, "val")))
+        "train": ("train_images_rgb_no_neg_filt_32/train_images_640_02_filt_32", 'train_images_rgb_no_neg_filt_32/train_640_02_filtered_32.json'),
+        "val": ("val_images_rgb_no_neg_filt_32/val_images_640_02_filt_32", 'val_images_rgb_no_neg_filt_32/val_640_02_filtered_32.json'),
     }
     print("PATHS: ",PATHS)
 
     catIds = [] if "cat_ids" not in args else args.cat_ids
-    args.data_dir="/nvmefs1/andrew.mendez/xview_dataset/"
+    # args.data_dir="/nvmefs1/andrew.mendez/xview_dataset/"
     img_folder, ann_file = PATHS[image_set]
     dataset = CocoDetection(
         args.backend,
